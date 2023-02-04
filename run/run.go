@@ -1,11 +1,14 @@
 package run
 
 import (
-	"dbconnector/modules"
+	"gdbc/modules"
 )
 
 func Run() {
-	m := modules.Mysql{}
+	m := modules.CreateObject()
 	modules.Checker(m)
 	modules.GetVersion(m)
+	modules.GetDatabases(m)
+	modules.GetTables(m)
+	modules.PrintInfo(m)
 }

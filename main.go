@@ -1,8 +1,8 @@
 package main
 
 import (
-	"dbconnector/common"
-	"dbconnector/run"
+	"gdbc/common"
+	"gdbc/run"
 )
 
 func main() {

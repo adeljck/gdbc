@@ -1,6 +1,9 @@
 package modules
 
-import "log"
+import (
+	"gdbc/common"
+	"log"
+)
 
 type Connector interface {
 	Checker() bool
@@ -13,8 +16,10 @@ type Connector interface {
 
 func Checker(C Connector) {
 	if C.Checker() {
+		log.SetPrefix("[+] ")
 		log.Println("Connect Database Successful")
 	} else {
+		log.SetPrefix("[-] ")
 		log.Fatalln("Connect Database Failed")
 	}
 }
@@ -23,4 +28,19 @@ func GetVersion(C Connector) {
 }
 func GetDatabases(C Connector) {
 	C.Databases()
+}
+func GetTables(C Connector) {
+	C.Tables()
+}
+func PrintInfo(C Connector) {
+	C.Info()
+}
+func CreateObject() Connector {
+	switch common.BaseInfo.DbType {
+	case "mysql":
+		m := new(Mysql)
+		return m
+	default:
+		return nil
+	}
 }
