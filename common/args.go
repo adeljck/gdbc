@@ -36,9 +36,14 @@ func splitDatabaseUrl(DbUrl string) {
 
 	} else {
 		second := strings.Split(first[1], "@")
-		credentials := strings.Split(second[0], ":")
-		BaseInfo.UserName = credentials[0]
-		BaseInfo.Password = credentials[1]
+		if BaseInfo.DbType == "redis" {
+			BaseInfo.UserName = "none"
+			BaseInfo.Password = second[0]
+		} else {
+			credentials := strings.Split(second[0], ":")
+			BaseInfo.UserName = credentials[0]
+			BaseInfo.Password = credentials[1]
+		}
 		hostInfo := strings.Split(second[1], "/")[0]
 		host := strings.Split(hostInfo, ":")
 		BaseInfo.Host = host[0]

@@ -41,6 +41,8 @@ func CreateObject() Connector {
 		m := new(Mysql)
 		return m
 	default:
+		log.SetPrefix("[-] ")
+		log.Fatalf("UnSupport Db Type %s!!!!\n", common.BaseInfo.DbType)
 		return nil
 	}
 }
