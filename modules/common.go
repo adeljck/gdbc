@@ -40,6 +40,9 @@ func CreateObject() Connector {
 	case "mysql":
 		m := new(Mysql)
 		return m
+	case "redis":
+		m := new(Redis)
+		return m
 	default:
 		log.SetPrefix("[-] ")
 		log.Fatalf("UnSupport Db Type %s!!!!\n", common.BaseInfo.DbType)
