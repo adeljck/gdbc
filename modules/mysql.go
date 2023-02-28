@@ -127,6 +127,7 @@ func (M *Mysql) Info() {
 	table.SetColumnSeparator("|")
 	table.SetRowSeparator("-")
 	table.Render()
+	db.Close()
 }
 func (M *Mysql) Checker() bool {
 	err := M.Init()

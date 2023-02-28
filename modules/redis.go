@@ -1,11 +1,14 @@
 package modules
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"gdbc/common"
-	"github.com/gomodule/redigo/redis"
+	"github.com/redis/go-redis/v9"
 	"log"
+	"strconv"
+	"strings"
 )
 
 type Redis struct {
@@ -17,21 +20,19 @@ type Redis struct {
 	}
 }
 
-var conn redis.Conn
+var client *redis.Client
 
 func (R *Redis) init() error {
 	R.BaseInfo = common.BaseInfo
 	dsn := fmt.Sprintf("%s:%s", R.BaseInfo.Host, R.BaseInfo.Port)
-	conn, err := redis.Dial("tcp", dsn, redis.DialPassword(R.BaseInfo.Password))
-	//defer client.Close()
+	client = redis.NewClient(
+		&redis.Options{Addr: dsn, Password: R.BaseInfo.Password, DB: 0},
+	)
+	pong, err := client.Ping(context.Background()).Result()
 	if err != nil {
 		return err
 	}
-	reply, err := conn.Do("ping")
-	if err != nil {
-		return err
-	}
-	if reply == "PONG" {
+	if pong == "PONG" {
 		return nil
 	} else {
 		return errors.New(fmt.Sprintf("Connect to Redis Server %s Failed!!!\n", R.BaseInfo.Host))
@@ -53,18 +54,43 @@ func (R *Redis) Info() {
 	fmt.Printf(results, R.BaseInfo.DbType, R.Result.Version, R.BaseInfo.Host, R.BaseInfo.Port, R.BaseInfo.UserName, R.BaseInfo.Password)
 }
 func (R *Redis) Version() {
-	result, err := conn.Do("info")
+	info, err := client.Info(context.Background(), "server").Result()
 	if err != nil {
 		log.Fatalln(err)
 	}
-	fmt.Println(result)
+	version := ""
+	for _, line := range strings.Split(info, "\r\n") {
+		if strings.HasPrefix(line, "redis_version:") {
+			version = strings.TrimPrefix(line, "redis_version:")
+			break
+		}
+	}
+	R.Result.Version = version
 }
 func (R *Redis) Databases() {
-
+	count, err := client.ConfigGet(context.Background(), "databases").Result()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	final, err := strconv.Atoi(count["databases"])
+	if err != nil {
+		log.Fatalln(err)
+	}
+	R.Result.DataBaseCount = final
+	for i := 0; i < final; i++ {
+		tmp := DataBaseInfo{
+			Database:   string(i),
+			TableCount: 0,
+			Tables:     nil,
+		}
+		R.Result.DataBaseInfos = append(R.Result.DataBaseInfos, tmp)
+	}
 }
 func (R Redis) Reverse() {
 
 }
 func (R *Redis) Tables() {
-
+	for _, v := range R.Result.DataBaseInfos {
+		client.
+	}
 }
