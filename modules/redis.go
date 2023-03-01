@@ -15,20 +15,25 @@ type Redis struct {
 	BaseInfo common.DbInfo
 	Result   struct {
 		Version       string `db:"version"`
-		DataBaseInfos []DataBaseInfo
+		DataBaseInfos []RedisDatabaseInfo
 		DataBaseCount int `db:"count"`
 	}
 }
+type RedisDatabaseInfo struct {
+	Database  int
+	KeysCount int
+	Keys      []string
+}
 
-var client *redis.Client
+var rs *redis.Client
 
 func (R *Redis) init() error {
 	R.BaseInfo = common.BaseInfo
 	dsn := fmt.Sprintf("%s:%s", R.BaseInfo.Host, R.BaseInfo.Port)
-	client = redis.NewClient(
+	rs = redis.NewClient(
 		&redis.Options{Addr: dsn, Password: R.BaseInfo.Password, DB: 0},
 	)
-	pong, err := client.Ping(context.Background()).Result()
+	pong, err := rs.Ping(context.Background()).Result()
 	if err != nil {
 		return err
 	}
@@ -54,7 +59,7 @@ func (R *Redis) Info() {
 	fmt.Printf(results, R.BaseInfo.DbType, R.Result.Version, R.BaseInfo.Host, R.BaseInfo.Port, R.BaseInfo.UserName, R.BaseInfo.Password)
 }
 func (R *Redis) Version() {
-	info, err := client.Info(context.Background(), "server").Result()
+	info, err := rs.Info(context.Background(), "server").Result()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -68,7 +73,7 @@ func (R *Redis) Version() {
 	R.Result.Version = version
 }
 func (R *Redis) Databases() {
-	count, err := client.ConfigGet(context.Background(), "databases").Result()
+	count, err := rs.ConfigGet(context.Background(), "databases").Result()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -78,19 +83,26 @@ func (R *Redis) Databases() {
 	}
 	R.Result.DataBaseCount = final
 	for i := 0; i < final; i++ {
-		tmp := DataBaseInfo{
-			Database:   string(i),
-			TableCount: 0,
-			Tables:     nil,
+		c := redis.NewClient(
+			&redis.Options{Addr: fmt.Sprintf("%s:%s", R.BaseInfo.Host, R.BaseInfo.Port), Password: R.BaseInfo.Password, DB: i},
+		)
+		res, err := c.Keys(context.Background(), "*").Result()
+		if err != nil {
+			log.Fatalln(err)
 		}
-		R.Result.DataBaseInfos = append(R.Result.DataBaseInfos, tmp)
+		if len(res) == 0 {
+			continue
+		}
+		R.Result.DataBaseInfos = append(R.Result.DataBaseInfos, RedisDatabaseInfo{
+			Database:  i,
+			KeysCount: len(res),
+			Keys:      res,
+		})
 	}
 }
 func (R Redis) Reverse() {
 
 }
 func (R *Redis) Tables() {
-	for _, v := range R.Result.DataBaseInfos {
-		client.
-	}
+
 }
