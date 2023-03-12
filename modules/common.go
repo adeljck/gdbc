@@ -43,6 +43,9 @@ func CreateObject() Connector {
 	case "redis":
 		m := new(Redis)
 		return m
+	case "mssql":
+		m := new(Mssql)
+		return m
 	default:
 		log.SetPrefix("[-] ")
 		log.Fatalf("UnSupport Db Type %s!!!!\n", common.BaseInfo.DbType)
