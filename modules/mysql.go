@@ -17,11 +17,11 @@ type Mysql struct {
 	BaseInfo common.DbInfo
 	Result   struct {
 		Version       string `db:"version"`
-		DataBaseInfos []DataBaseInfo
+		DataBaseInfos []MysqlDataBaseInfo
 		DataBaseCount int `db:"count"`
 	}
 }
-type DataBaseInfo struct {
+type MysqlDataBaseInfo struct {
 	Database   string `db:"table_schema"`
 	TableCount int    `db:"TABLES"`
 	Tables     []string

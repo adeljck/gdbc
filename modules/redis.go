@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"gdbc/common"
+	"github.com/olekukonko/tablewriter"
 	"github.com/redis/go-redis/v9"
 	"log"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Redis struct {
@@ -18,22 +21,21 @@ type Redis struct {
 		DataBaseInfos []RedisDatabaseInfo
 		DataBaseCount int `db:"count"`
 	}
+	rs *redis.Client
 }
 type RedisDatabaseInfo struct {
 	Database  int
 	KeysCount int
-	Keys      []string
+	Keys      map[string]string
 }
-
-var rs *redis.Client
 
 func (R *Redis) init() error {
 	R.BaseInfo = common.BaseInfo
 	dsn := fmt.Sprintf("%s:%s", R.BaseInfo.Host, R.BaseInfo.Port)
-	rs = redis.NewClient(
-		&redis.Options{Addr: dsn, Password: R.BaseInfo.Password, DB: 0},
+	R.rs = redis.NewClient(
+		&redis.Options{Addr: dsn, Password: R.BaseInfo.Password, DB: 0, DialTimeout: 5 * time.Second},
 	)
-	pong, err := rs.Ping(context.Background()).Result()
+	pong, err := R.rs.Ping(context.Background()).Result()
 	if err != nil {
 		return err
 	}
@@ -53,13 +55,38 @@ func (R *Redis) Checker() bool {
 	}
 	return true
 }
+func (D RedisDatabaseInfo) combineKeyVal() string {
+	results := make([]string, 0)
+	for k, v := range D.Keys {
+		results = append(results, k+":"+v)
+	}
+	return strings.Join(results, "\n")
+}
 func (R *Redis) Info() {
 	fmt.Println("********************************************************************************************")
 	results := "Database Type: %s\nDatabase Version: %s\nHost: %s\nPort: %s\nUser: %s\nPassword: %s\n"
 	fmt.Printf(results, R.BaseInfo.DbType, R.Result.Version, R.BaseInfo.Host, R.BaseInfo.Port, R.BaseInfo.UserName, R.BaseInfo.Password)
+	if len(R.Result.DataBaseInfos) == 0 {
+		fmt.Println("No Keys Found.")
+		return
+	}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"database_name", "keys_count", "key:value"})
+	for _, v := range R.Result.DataBaseInfos {
+		row := []string{
+			strconv.Itoa(v.Database), strconv.Itoa(v.KeysCount), v.combineKeyVal(),
+		}
+		table.Append(row)
+	}
+	table.SetRowLine(true)
+	table.SetCenterSeparator("*")
+	table.SetColumnSeparator("|")
+	table.SetRowSeparator("-")
+	table.Render()
+	R.rs.Close()
 }
 func (R *Redis) Version() {
-	info, err := rs.Info(context.Background(), "server").Result()
+	info, err := R.rs.Info(context.Background(), "server").Result()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -73,7 +100,7 @@ func (R *Redis) Version() {
 	R.Result.Version = version
 }
 func (R *Redis) Databases() {
-	count, err := rs.ConfigGet(context.Background(), "databases").Result()
+	count, err := R.rs.ConfigGet(context.Background(), "databases").Result()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -93,10 +120,15 @@ func (R *Redis) Databases() {
 		if len(res) == 0 {
 			continue
 		}
+		values := make(map[string]string, 0)
+		for _, v := range res {
+			value, _ := c.Get(context.Background(), v).Result()
+			values[v] = value
+		}
 		R.Result.DataBaseInfos = append(R.Result.DataBaseInfos, RedisDatabaseInfo{
 			Database:  i,
 			KeysCount: len(res),
-			Keys:      res,
+			Keys:      values,
 		})
 	}
 }
